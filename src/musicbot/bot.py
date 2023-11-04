@@ -2,12 +2,14 @@
 # -*- coding: utf-8 -*-
 # Music streaming discord bot
 
-"Music streaming discord bot"
+"""Music streaming discord bot
+
+Original Source: https://gist.github.com/vbe0201/ade9b80f2d3b64643d854938d40a0a2d"""
 
 from __future__ import annotations
 
 __title__ = "MusicBot"
-__author__ = "Unknown, PiBoy, and CoolCat467"
+__author__ = "vbe0201, PiBoy, and CoolCat467"
 __version__ = "1.0.0"
 
 
@@ -17,7 +19,7 @@ import io
 import os
 import sys
 import traceback
-from collections.abc import Awaitable, Callable, Iterable
+from collections.abc import Awaitable, Callable, Iterable, Coroutine
 from typing import Any, Final, cast, get_args, get_type_hints
 
 import discord
@@ -29,11 +31,12 @@ from dotenv import load_dotenv
 # https://discord.com/developers
 
 
+load_dotenv()
+TOKEN: Final = os.getenv("DISCORD_TOKEN")
+
 BOT_PREFIX: Final = "!music"
 BOT_DESC: Final = "Play music by stealing it from youtube"
 
-load_dotenv()
-TOKEN: Final = os.getenv("DISCORD_TOKEN")
 
 # Suppress noise about console usage from errors
 yt_dlp.utils.bug_reports_message = lambda: ""
@@ -54,7 +57,10 @@ ytdl_format_options = {
     # bind to ipv4 since ipv6 addresses cause issues sometimes
 }
 
-FFMPEG_OPTIONS: dict[str, Any] = {"options": "-vn"}
+FFMPEG_OPTIONS: dict[str, Any] = {
+    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+    "options": "-vn",
+}
 
 ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
 
@@ -70,8 +76,7 @@ def combine_end(data: Iterable[str], final: str = "and") -> str:
 
 
 def parse_args(string: str, ignore: int = 0, sep: str = " ") -> list[str]:
-    """Return a list of arguments by splitting string by separation,
-    omitting first ignore arguments"""
+    "Return a list of arguments"
     return string.split(sep)[ignore:]
 
 
@@ -79,19 +84,17 @@ def calculate_edit_distance(a: str, b: str) -> int:
     "Calculate Levenshtein Edit distance"
     prev = list(range(len(b) + 1))
     new = [0 for _ in range(len(b) + 1)]
-    for idx_y, char_a in enumerate(a):
-        new[0] = idx_y + 1
-        for idx_x, char_b in enumerate(b):
+    for y, char_a in enumerate(a):
+        new[0] = y + 1
+        for x, char_b in enumerate(b):
             # If equal, new value is same as last excluding current
             if char_a == char_b:
-                new[idx_x + 1] = prev[idx_x]
+                new[x + 1] = prev[x]
             else:
                 # Otherwise, smallest change plus one to get to this state
-                new[idx_x + 1] = (
-                    min([new[idx_x]] + prev[idx_x : idx_x + 2]) + 1
-                )
-        for i, value in enumerate(new):
-            prev[i] = value
+                new[x + 1] = min([new[x]] + prev[x : x + 2]) + 1
+        for i, v in enumerate(new):
+            prev[i] = v
     # Smallest edit for whole comparison is just the final entry of the matrix
     return new[-1]
 
@@ -99,7 +102,7 @@ def calculate_edit_distance(a: str, b: str) -> int:
 def closest(given: str, options: Iterable[str]) -> str:
     "Get closest text to given from options"
     best = ""
-    best_score = sum((len(opt) for opt in options))
+    best_score = sum(len(opt) for opt in options)
     for option in options:
         score = calculate_edit_distance(given, option)
         if score < best_score:
@@ -150,9 +153,10 @@ def process_arguments(
     if not parameters:
         return complete
 
-    required_count = len(
-        [v for v in parameters.values() if type(None) not in get_args(v)]
-    )
+    required_count = 0
+    for v in parameters.values():
+        if type(None) not in get_args(v):
+            required_count += 1
 
     if len(given_args) < required_count:
         raise ValueError("Missing parameters!")
@@ -171,18 +175,19 @@ def process_arguments(
         if union_match(arg_type, str):
             assert isinstance(arg, str)
             matched = False
-            if union_match(target_type, discord.VoiceChannel):
-                for voice_channel in message.guild.voice_channels:
-                    if voice_channel.name == arg:
-                        complete[name] = voice_channel
-                        matched = True
-                        break
-            if union_match(target_type, discord.TextChannel):
-                for text_channel in message.guild.text_channels:
-                    if text_channel.name == arg:
-                        complete[name] = text_channel
-                        matched = True
-                        break
+            if message.guild is not None:
+                if union_match(target_type, discord.VoiceChannel):
+                    for voice_channel in message.guild.voice_channels:
+                        if voice_channel.name == arg:
+                            complete[name] = voice_channel
+                            matched = True
+                            break
+                if union_match(target_type, discord.TextChannel):
+                    for text_channel in message.guild.text_channels:
+                        if text_channel.name == arg:
+                            complete[name] = text_channel
+                            matched = True
+                            break
             if union_match(target_type, float):
                 if arg.isdecimal():
                     complete[name] = float(arg)
@@ -240,8 +245,11 @@ def override_methods(obj: object, attrs: dict[str, Any]) -> Any:
 def interaction_to_message(
     interaction: discord.Interaction,
 ) -> discord.Message:
-    """Convert slash command interaction to Message that can be handled
-    the same way as on_message."""
+    "Convert slash command interaction to Message"
+
+    def str_null(x: object | None) -> str | None:
+        return None if x is None else str(x)
+
     data: dict[str, Any] = {
         "id": interaction.id,
         "webhook_id": None,
@@ -264,9 +272,33 @@ def interaction_to_message(
             "type": 2,
             "name": "Interaction name",
             "member": {
+                "joined_at": str_null(interaction.user.joined_at)
+                if isinstance(interaction.user, discord.Member)
+                else None,
+                "premium_since": str_null(interaction.user.premium_since)
+                if isinstance(interaction.user, discord.Member)
+                else None,
                 "roles": []
                 if isinstance(interaction.user, discord.User)
                 else [role.id for role in interaction.user.roles],
+                "nick": interaction.user.nick
+                if isinstance(interaction.user, discord.Member)
+                else None,
+                "pending": interaction.user.pending
+                if isinstance(interaction.user, discord.Member)
+                else None,
+                "avatar": interaction.user.avatar,
+                "flags": interaction.user._flags
+                if isinstance(interaction.user, discord.Member)
+                else None,
+                "permissions": interaction.user._permissions
+                if isinstance(interaction.user, discord.Member)
+                else None,
+                "communication_disabled_until": str_null(
+                    interaction.user.timed_out_until
+                )
+                if isinstance(interaction.user, discord.Member)
+                else None,
             },
             "user": {
                 "username": interaction.user.name,
@@ -280,7 +312,7 @@ def interaction_to_message(
                 else [role.id for role in interaction.user.roles],
             },
         },
-        #        'message_reference': None,
+        # 'message_reference': None,
         "application": {
             "id": interaction.application_id,
             "description": "Application description",
@@ -327,17 +359,16 @@ def interaction_to_message(
 def extract_parameters_from_callback(
     func: Callable[..., Any], globalns: dict[str, Any]
 ) -> dict[str, discord.app_commands.transformers.CommandParameter]:
-    """Set up slash command things from function
+    """Set up slash command things from function.
 
-    Stolen from internals of discord.app_commands"""
+    Stolen from internals of discord.app_commands.commands"""
     params = inspect.signature(func).parameters
     cache: dict[str, Any] = {}
-    #    required_params = discord.utils.is_inside_class(func) + 1
     required_params = 1
     if len(params) < required_params:
         raise TypeError(
-            f"callback {func.__qualname__!r} must have more than "
-            f"{required_params - 1} parameter(s)"
+            f"callback {func.__qualname__!r} must have more "
+            f"than {required_params - 1} parameter(s)"
         )
 
     iterator = iter(params.values())
@@ -348,8 +379,8 @@ def extract_parameters_from_callback(
     for parameter in iterator:
         if parameter.annotation is parameter.empty:
             raise TypeError(
-                f"parameter {parameter.name!r} is missing a type "
-                f"annotation in callback {func.__qualname__!r}"
+                f"parameter {parameter.name!r} is missing a "
+                f"type annotation in callback {func.__qualname__!r}"
             )
 
         resolved = discord.utils.resolve_annotation(
@@ -368,9 +399,8 @@ def extract_parameters_from_callback(
     )
 
     try:
-        descriptions.update(
-            func.__discord_app_commands_param_description__  # type: ignore
-        )
+        name = "__discord_app_commands_param_description__"
+        descriptions.update(getattr(func, name))
     except AttributeError:
         for param in values:
             if param.description is discord.utils.MISSING:
@@ -396,7 +426,7 @@ def extract_parameters_from_callback(
 
     try:
         name = "__discord_app_commands_param_autocomplete__"
-        autocomplete = getattr(func, name)  # type: ignore[attr-defined]
+        autocomplete = getattr(func, name)
     except AttributeError:
         pass
     else:
@@ -410,33 +440,33 @@ def extract_parameters_from_callback(
 def slash_handle(
     message_command: Callable[[discord.Message], Awaitable[None]]
 ) -> tuple[
-    Callable[[discord.Interaction], Awaitable[None]],
-    dict[str, discord.app_commands.transformers.CommandParameter],
+    Callable[[discord.Interaction[MusicBot]], Coroutine[Any, Any, Any]], Any
 ]:
     "Slash handle wrapper to convert interaction to message."
 
     class Dummy:
         "Dummy class so required_params = 2 for slash_handler"
 
-        # pylint: disable=no-self-argument
         async def slash_handler(
-            *args: discord.Interaction, **kwargs: Any
+            *args: discord.Interaction[MusicBot], **kwargs: Any
         ) -> None:
             "Slash command wrapper for message-based command."
-            interaction: discord.Interaction = args[1]
+            interaction: discord.Interaction[MusicBot] = args[1]
             try:
                 msg = interaction_to_message(interaction)
             except Exception:
-                print(log_active_exception())
+                root = os.path.split(os.path.abspath(__file__))[0]
+                logpath = os.path.join(root, "log.txt")
+                log_active_exception(logpath)
                 raise
             try:
                 await message_command(msg, *args[2:], **kwargs)
             except Exception:
                 await msg.channel.send(
-                    "An error occured processing the slash command"
+                    "An error occurred processing the slash command"
                 )
                 if hasattr(interaction._client, "on_error"):
-                    await interaction._client.on_error(  # type: ignore
+                    await interaction._client.on_error(
                         "slash_command", message_command.__name__
                     )
                 raise
@@ -448,30 +478,14 @@ def slash_handle(
     return merp.slash_handler, params  # type: ignore
 
 
-async def send_command_list(
-    commands: dict[str, Callable[..., Any]],
-    name: str,
-    channel: discord.abc.Messageable,
-) -> None:
-    "Send message on channel telling user about all valid name commands."
-    sort = sorted(commands.keys(), reverse=True)
-    names = [f"`{v}` - {commands[v].__doc__}" for v in sort]
-    await send_over_2000(
-        channel.send,
-        "\n".join(names),
-        start=f"{__title__}'s Valid {name} Commands:\n",
-    )
-
-
 async def send_over_2000(
-    send_func: Callable[[str], Awaitable[Any]],
+    send_func: Callable[[str], Awaitable[None]],
     text: str,
     header: str = "",
     wrap_with: str = "",
     start: str = "",
 ) -> None:
-    """Use send_func to send text in segments over 2000 characters
-    by splitting it into multiple messages."""
+    "Use send_func to send text in segments if required"
     parts = [start + wrap_with + header]
     send = str(text)
     wrap_alloc = len(wrap_with)
@@ -489,14 +503,32 @@ async def send_over_2000(
     # This would be great for asyncio.gather, but
     # I'm pretty sure that will throw off call order,
     # and it's quite important that everything stays in order.
-    #    coros = [send_func(part) for part in parts]
-    #    await asyncio.gather(*coros)
+    # coros = [send_func(part) for part in parts]
+    # await asyncio.gather(*coros)
     for part in parts:
         await send_func(part)
 
 
+async def send_command_list(
+    commands: dict[
+        str, Callable[[discord.message.Message], Coroutine[None, None, None]]
+    ],
+    name: str,
+    channel: discord.abc.Messageable,
+) -> None:
+    "Send message on channel telling user about all valid name commands."
+    sort = sorted(commands.keys(), reverse=True)
+    command_data = [f"`{v}` - {commands[v].__doc__}" for v in sort]
+    await send_over_2000(
+        channel.send,  # type: ignore
+        "\n".join(command_data),
+        start=f"{__title__}'s Valid {name} Commands:\n",
+    )
+
+
 class YTDLSource(discord.PCMVolumeTransformer[discord.FFmpegPCMAudio]):
     "YouTube DL source"
+    __slots__ = ("data", "title", "url")
 
     def __init__(
         self,
@@ -569,10 +601,12 @@ class MusicBot(discord.Client):
         self.tree = discord.app_commands.CommandTree(self)
         for command_name, command_function in self.commands.items():
             callback, params = slash_handle(command_function)
-            command = discord.app_commands.commands.Command[Any, Any, None](
+            command: discord.app_commands.commands.Command[
+                Any, Any, None
+            ] = discord.app_commands.commands.Command(
                 name=command_name,
                 description=command_function.__doc__ or "",
-                callback=callback,  # type: ignore[arg-type]
+                callback=callback,  # type: ignore [arg-type]
                 nsfw=False,
                 auto_locale_strings=True,
             )
@@ -591,7 +625,7 @@ class MusicBot(discord.Client):
             )
             command.binding = getattr(command_function, "__self__", None)
             self.tree.add_command(command)
-        self.tree.on_error = self.on_error  # type: ignore
+        self.tree.on_error = self.on_error  # type: ignore[assignment]
 
         self.guild_voices: dict[int, discord.VoiceClient] = {}
         self.guild_volumes: dict[int, int] = {}
@@ -622,6 +656,10 @@ class MusicBot(discord.Client):
 
     async def on_ready(self) -> None:
         "Set up slash commands and change presence"
+        print(f"{self.user} has connected to Discord!")
+        print(f"Prefix  : {self.prefix}")
+        print(f"Intents : {self.intents}")
+
         print(f"\n{self.user} is connected to the following guilds:\n")
         guildnames = []
         for guild in self.guilds:
@@ -890,6 +928,7 @@ class MusicBot(discord.Client):
                 continue
             if typeval in {discord.Message}:
                 continue
+
             params[name] = typeval
 
         try:
@@ -897,7 +936,12 @@ class MusicBot(discord.Client):
         except ValueError:
             print(log_active_exception())
             names = combine_end(
-                [f"{k} ({v.__name__})" for k, v in params.items()]
+                [
+                    f"{k}"
+                    if not isinstance(v, type)
+                    else f"{k} ({v.__name__})"
+                    for k, v in params.items()
+                ]
             )
             await message.channel.send(
                 f"Missing one or more arguments: {names}"
@@ -922,13 +966,13 @@ class MusicBot(discord.Client):
                 args = parse_args(message.clean_content.lower())
                 pfx = args[0] == self.prefix if len(args) >= 1 else False
                 # of it starts with us being mentioned,
-                ment = False
+                meant = False
                 if message.content.startswith("<@"):
                     new = message.content.replace("!", "")
                     new = new.replace("&", "")
                     assert self.user is not None, "self.user is None"
-                    ment = new.startswith(self.user.mention)
-                if pfx or ment:
+                    meant = new.startswith(self.user.mention)
+                if pfx or meant:
                     # we are, in reality, the fastest typer in world. aw yep.
                     async with message.channel.typing():
                         # Process message as guild
@@ -948,6 +992,7 @@ class MusicBot(discord.Client):
         extra += "\n".join(f"{key}:{val}" for key, val in kwargs.items())
         print(extra)
         print(log_active_exception())
+        await super().on_error(event, *args, **kwargs)
 
 
 def run() -> None:
