@@ -239,33 +239,49 @@ def interaction_to_message(
             "type": 2,
             "name": "Interaction name",
             "member": {
-                "joined_at": str_null(interaction.user.joined_at)
-                if isinstance(interaction.user, discord.Member)
-                else None,
-                "premium_since": str_null(interaction.user.premium_since)
-                if isinstance(interaction.user, discord.Member)
-                else None,
-                "roles": []
-                if isinstance(interaction.user, discord.User)
-                else [role.id for role in interaction.user.roles],
-                "nick": interaction.user.nick
-                if isinstance(interaction.user, discord.Member)
-                else None,
-                "pending": interaction.user.pending
-                if isinstance(interaction.user, discord.Member)
-                else None,
+                "joined_at": (
+                    str_null(interaction.user.joined_at)
+                    if isinstance(interaction.user, discord.Member)
+                    else None
+                ),
+                "premium_since": (
+                    str_null(interaction.user.premium_since)
+                    if isinstance(interaction.user, discord.Member)
+                    else None
+                ),
+                "roles": (
+                    []
+                    if isinstance(interaction.user, discord.User)
+                    else [role.id for role in interaction.user.roles]
+                ),
+                "nick": (
+                    interaction.user.nick
+                    if isinstance(interaction.user, discord.Member)
+                    else None
+                ),
+                "pending": (
+                    interaction.user.pending
+                    if isinstance(interaction.user, discord.Member)
+                    else None
+                ),
                 "avatar": interaction.user.avatar,
-                "flags": interaction.user._flags
-                if isinstance(interaction.user, discord.Member)
-                else None,
-                "permissions": interaction.user._permissions
-                if isinstance(interaction.user, discord.Member)
-                else None,
-                "communication_disabled_until": str_null(
-                    interaction.user.timed_out_until,
-                )
-                if isinstance(interaction.user, discord.Member)
-                else None,
+                "flags": (
+                    interaction.user._flags
+                    if isinstance(interaction.user, discord.Member)
+                    else None
+                ),
+                "permissions": (
+                    interaction.user._permissions
+                    if isinstance(interaction.user, discord.Member)
+                    else None
+                ),
+                "communication_disabled_until": (
+                    str_null(
+                        interaction.user.timed_out_until,
+                    )
+                    if isinstance(interaction.user, discord.Member)
+                    else None
+                ),
             },
             "user": {
                 "username": interaction.user.name,
@@ -274,9 +290,11 @@ def interaction_to_message(
                 "avatar": interaction.user._avatar,
                 "bot": interaction.user.bot,
                 "system": interaction.user.system,
-                "roles": []
-                if isinstance(interaction.user, discord.User)
-                else [role.id for role in interaction.user.roles],
+                "roles": (
+                    []
+                    if isinstance(interaction.user, discord.User)
+                    else [role.id for role in interaction.user.roles]
+                ),
             },
         },
         # 'message_reference': None,
@@ -677,7 +695,7 @@ class MusicBot(discord.Client):
         )
         await self.change_presence(status=discord.Status.online, activity=act)
 
-    async def help(  # noqa: A003
+    async def help(
         self,
         message: discord.message.Message,
     ) -> None:
@@ -949,9 +967,11 @@ class MusicBot(discord.Client):
             print(log_active_exception())
             names = combine_end(
                 [
-                    f"{k}"
-                    if not isinstance(v, type)
-                    else f"{k} ({v.__name__})"
+                    (
+                        f"{k}"
+                        if not isinstance(v, type)
+                        else f"{k} ({v.__name__})"
+                    )
                     for k, v in params.items()
                 ],
             )
