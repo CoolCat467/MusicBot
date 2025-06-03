@@ -558,7 +558,7 @@ class YTDLSource(discord.PCMVolumeTransformer[discord.FFmpegPCMAudio]):
         data = await loop.run_in_executor(
             None,
             lambda: cast(
-                dict[str, Any],
+                "dict[str, Any]",
                 ytdl.extract_info(url, download=not stream),
             ),
         )

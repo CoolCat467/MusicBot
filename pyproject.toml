@@ -11,16 +11,16 @@ authors = [
 description = "Youtube audio streamer discord bot"
 readme = {file = "README.md", content-type = "text/markdown"}
 license = {file = "LICENSE"}
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Natural Language :: English",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3 :: Only",
     "Topic :: Utilities",
     "Operating System :: OS Independent",
@@ -28,13 +28,13 @@ classifiers = [
 ]
 keywords = ["discord", "bot", "music"]
 dependencies = [
-    "aiohttp==3.9.3",
-    "discord.py~=2.3.2",
+    "aiohttp==3.12.7",
+    "discord-py==2.5.2",
     "python-dotenv~=1.0.0",
-    "httpx[http2]~=0.27.0",
-    "asyncio-dgram~=2.1.2",
-    "dnspython~=2.6.1",
-    "yt-dlp~=2024.3.10",
+    "httpx[http2]~=0.28.1",
+    "asyncio-dgram~=2.2.0",
+    "dnspython~=2.7.0",
+    "yt-dlp>=2025.5.22",
     "PyNaCl~=1.5.0"
 ]
 
@@ -114,7 +114,7 @@ select = [
     "SIM",   # flake8-simplify
     "SLOT",  # flake8-slots
     "TCH",   # flake8-type-checking
-    "TRIO",  # flake8-trio
+    "ASYNC1",# flake8-trio
     "UP",    # pyupgrade
     "W",     # Warning
     "YTT",   # flake8-2020
