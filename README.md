@@ -7,3 +7,10 @@ Discord bot to stream youtube audio in a voice channel
 [![code style: black](https://img.shields.io/badge/code_style-black-000000.svg)](https://github.com/psf/black)
 
 <!-- END BADGIE TIME -->
+
+# Usage
+- Download this repo
+- Go to folder
+- Install with pip: `pip install -e .`
+- Add `.env` file with `DISCORD_TOKEN=<your token goes here>`
+- Start musicbot with `run_musicbot`

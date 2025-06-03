@@ -9,7 +9,7 @@ from __future__ import annotations
 
 __title__ = "MusicBot"
 __author__ = "vbe0201, PiBoy, and CoolCat467"
-__version__ = "1.0.0"
+__version__ = "1.0.2"
 
 
 import asyncio
@@ -37,11 +37,6 @@ load_dotenv()
 TOKEN: Final = os.getenv("DISCORD_TOKEN")
 
 BOT_PREFIX: Final = "!music"
-BOT_DESC: Final = "Play music by stealing it from youtube"
-
-
-# Suppress noise about console usage from errors
-yt_dlp.utils.bug_reports_message = lambda: ""
 
 
 ytdl_format_options: Final = {
@@ -457,9 +452,9 @@ def slash_handle(
                 raise
             try:
                 await message_command(msg, *args[2:], **kwargs)
-            except Exception:
+            except Exception as exc:
                 await msg.channel.send(
-                    "An error occurred processing the slash command",
+                    f"An error occurred processing the slash command:\n```\n{exc}\n```",
                 )
                 if hasattr(interaction._client, "on_error"):
                     await interaction._client.on_error(
@@ -510,7 +505,7 @@ async def send_over_2000(
 async def send_command_list(
     commands: dict[
         str,
-        Callable[[discord.message.Message], Coroutine[None, None, None]],
+        Callable[[discord.message.Message], Awaitable[Any]],
     ],
     name: str,
     channel: discord.abc.Messageable,
@@ -545,6 +540,14 @@ class YTDLSource(discord.PCMVolumeTransformer[discord.FFmpegPCMAudio]):
         self.title = data.get("title")
         self.url = data.get("url")
 
+    @staticmethod
+    def _extract_info(url: str, download: bool = False) -> dict[str, Any]:
+        result = ytdl.extract_info(url, download=download)
+        return cast(
+            "dict[str, Any]",
+            result,
+        )
+
     @classmethod
     async def from_url(
         cls,
@@ -557,10 +560,9 @@ class YTDLSource(discord.PCMVolumeTransformer[discord.FFmpegPCMAudio]):
         loop = loop or asyncio.get_event_loop()
         data = await loop.run_in_executor(
             None,
-            lambda: cast(
-                "dict[str, Any]",
-                ytdl.extract_info(url, download=not stream),
-            ),
+            cls._extract_info,
+            url,
+            not stream,
         )
 
         if "entries" in data:
@@ -596,9 +598,9 @@ class MusicBot(discord.Client):
             str,
             Callable[[discord.message.Message], Awaitable[Any]],
         ] = {
-            "join": self.join,
-            "stream": self.stream,
-            "volume": self.volume,
+            "join": self.join,  # type: ignore[dict-item]
+            "stream": self.stream,  # type: ignore[dict-item]
+            "volume": self.volume,  # type: ignore[dict-item]
             "stop": self.stop,
             "help": self.help,
             "toggle": self.toggle,
@@ -614,7 +616,7 @@ class MusicBot(discord.Client):
             ] = discord.app_commands.commands.Command(
                 name=command_name,
                 description=command_function.__doc__ or "",
-                callback=callback,  # type: ignore [arg-type]
+                callback=callback,
                 nsfw=False,
                 auto_locale_strings=True,
             )
@@ -646,11 +648,11 @@ class MusicBot(discord.Client):
         self.guild_voices: dict[int, discord.VoiceClient] = {}
         self.guild_volumes: dict[int, int] = {}
 
-    async def register_commands(self, guild: discord.Guild) -> None:
-        """Register commands for guild."""
-        self.tree.copy_global_to(guild=guild)
-
-        await self.tree.sync(guild=guild)
+    ##async def register_commands(self, guild: discord.Guild) -> None:
+    ##    """Register commands for guild."""
+    ##    self.tree.copy_global_to(guild=guild)
+    ##
+    ##    await self.tree.sync(guild=guild)
 
     async def eval_guild(self, guild: discord.Guild) -> int:
         """Evaluate guild. Return guild id."""
@@ -663,11 +665,11 @@ class MusicBot(discord.Client):
     async def eval_guilds(self) -> list[int]:
         """Return list of guild ids evaluated."""
         ids = []
-        register = []
+        # register = []
         for guild in self.guilds:
-            register.append(self.register_commands(guild))
+            # register.append(self.register_commands(guild))
             ids.append(self.eval_guild(guild))
-        await asyncio.gather(*register)
+        # await asyncio.gather(*register)
         return await asyncio.gather(*ids)
 
     async def on_ready(self) -> None:
@@ -682,12 +684,13 @@ class MusicBot(discord.Client):
             guildnames.append(f"{guild.name} (id: {guild.id})")
         spaces = max(len(name) for name in guildnames)
         print(
-            "\n" + "\n".join(name.rjust(spaces) for name in guildnames) + "\n",
+            "\n".join(name.rjust(spaces) for name in guildnames) + "\n",
         )
 
-        ids = await self.eval_guilds()
+        await self.eval_guilds()
 
-        print("Guilds evaluated:\n" + "\n".join([str(x) for x in ids]) + "\n")
+        synced = await self.tree.sync()
+        print(f"{len(synced)} slash commands synced\n")
 
         act = discord.Activity(
             type=discord.ActivityType.watching,
