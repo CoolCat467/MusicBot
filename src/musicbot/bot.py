@@ -93,16 +93,16 @@ def log_active_exception(extra: str | None = None) -> str:
     msg += "Exception class:\n" + str(values[0]) + "\n"
     msg += "Exception text:\n" + str(values[1]) + "\n"
 
-    with io.StringIO() as yes_totaly_a_file:
+    with io.StringIO() as yes_totally_a_file:
         traceback.print_exception(
             None,
             value=values[1],
             tb=values[2],
             limit=None,
-            file=yes_totaly_a_file,
+            file=yes_totally_a_file,
             chain=True,
         )
-        msg += "\n" + yes_totaly_a_file.getvalue() + "\n" + "#" * 16 + "\n"
+        msg += "\n" + yes_totally_a_file.getvalue() + "\n" + "#" * 16 + "\n"
     return msg
 
 

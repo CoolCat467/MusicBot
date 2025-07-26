@@ -1,7 +1,5 @@
 ci:
-  autofix_commit_msg: "[pre-commit.ci] auto fixes from pre-commit.com hooks"
   autofix_prs: true
-  autoupdate_commit_msg: "[pre-commit.ci] pre-commit autoupdate"
   autoupdate_schedule: quarterly
   submodules: false
   skip: [badgie]
@@ -18,25 +16,17 @@ repos:
       - id: check-merge-conflict
       - id: mixed-line-ending
       - id: check-case-conflict
+      - id: check-added-large-files
       - id: sort-simple-yaml
         files: .pre-commit-config.yaml
-  - repo: https://github.com/hadialqattan/pycln
-    rev: v2.5.0
-    hooks:
-      - id: pycln
-        args: [--config=pyproject.toml, src]
-        types: [file]
-        types_or: [python, pyi]
-  - repo: https://github.com/psf/black-pre-commit-mirror
-    rev: 25.1.0
-    hooks:
-      - id: black
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.2
+    rev: v0.12.5
     hooks:
+      - id: ruff-format
       - id: ruff-check
         types: [file]
         types_or: [python, pyi, toml]
+        args: ["--show-fixes"]
   - repo: https://github.com/CoolCat467/badgie
     rev: v0.9.6
     hooks:
@@ -47,3 +37,11 @@ repos:
       - id: codespell
         additional_dependencies:
           - tomli
+  - repo: https://github.com/adhtruong/mirrors-typos
+    rev: v1.34.0
+    hooks:
+      - id: typos
+  - repo: https://github.com/woodruffw/zizmor-pre-commit
+    rev: v1.11.0
+    hooks:
+      - id: zizmor
