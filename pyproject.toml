@@ -29,7 +29,7 @@ classifiers = [
 keywords = ["discord", "bot", "music"]
 dependencies = [
     "aiohttp==3.12.14",
-    "discord-py==2.5.2",
+    "discord-py==2.6.2",
     "python-dotenv~=1.1.1",
     "httpx[http2]~=0.28.1",
     "asyncio-dgram~=2.2.0",
