@@ -570,6 +570,10 @@ class YTDLSource(discord.PCMVolumeTransformer[discord.FFmpegPCMAudio]):
             entries = data["entries"]
             if entries:
                 data = entries[0]
+            else:
+                raise yt_dlp.utils.DownloadError(
+                    f"Error: No entries exist in playlist.\n```\n{data}\n```",
+                )
 
         filename = data["url"] if stream else ytdl.prepare_filename(data)
         return cls(
@@ -593,7 +597,7 @@ class MusicBot(discord.Client):
         """Initialize MusicBot."""
         super().__init__(intents=intents, **options)
 
-        self.loop = options.get("loop", asyncio.get_event_loop())
+        # self.loop = options.get("loop", asyncio.get_event_loop())
 
         self.commands: dict[
             str,
@@ -830,7 +834,7 @@ class MusicBot(discord.Client):
     #                return
     #            print(f'Exception playing music: {exception!r}')
     #
-    #        loop = getatttr(self, "loop", asyncio.get_event_loop())
+    #        loop = asyncio.get_event_loop()
     #
     #        async with message.channel.typing():
     #            player = await YTDLSource.from_url(url, loop=loop)
@@ -854,15 +858,21 @@ class MusicBot(discord.Client):
                 return
             print(f"Exception playing music: {exception!r}")
 
-        loop = getattr(self, "loop", asyncio.get_event_loop())
+        loop = asyncio.get_event_loop()
 
         async with message.channel.typing():
             await message.channel.send("Searching for video...")
-            player = await YTDLSource.from_url(
-                url,
-                loop=loop,
-                stream=True,
-            )
+            try:
+                player = await YTDLSource.from_url(
+                    url,
+                    loop=loop,
+                    stream=True,
+                )
+            except yt_dlp.utils.DownloadError as exc:
+                traceback.print_exception(exc)
+                str_error = str(exc).split(" ", 1)[-1]
+                await message.channel.send(f"Error finding video: {str_error}")
+                return
             voice_client.play(player, after=after)
 
             if voice_client.source is None:
