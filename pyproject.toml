@@ -32,7 +32,7 @@ dependencies = [
     "discord-py==2.6.4",
     "python-dotenv~=1.2.1",
     "httpx[http2]~=0.28.1",
-    "asyncio-dgram~=2.2.0",
+    "asyncio-dgram~=3.0.0",
     "dnspython~=2.7.0",
     "yt-dlp>=2025.5.22",
     "PyNaCl~=1.6.0"
