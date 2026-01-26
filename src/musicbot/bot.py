@@ -588,11 +588,12 @@ class MusicBot(discord.Client):
         self,
         *,
         intents: discord.Intents,
-        loop: asyncio.AbstractEventLoop,
         **options: Any,
     ) -> None:
         """Initialize MusicBot."""
-        super().__init__(intents=intents, loop=loop, **options)
+        super().__init__(intents=intents, **options)
+
+        self.loop = options.get("loop", asyncio.get_event_loop())
 
         self.commands: dict[
             str,
@@ -829,8 +830,10 @@ class MusicBot(discord.Client):
     #                return
     #            print(f'Exception playing music: {exception!r}')
     #
+    #        loop = getatttr(self, "loop", asyncio.get_event_loop())
+    #
     #        async with message.channel.typing():
-    #            player = await YTDLSource.from_url(url, loop=self.loop)
+    #            player = await YTDLSource.from_url(url, loop=loop)
     #            voice_client.play(player, after = after)
     #
     #        if voice_client.source is None:
@@ -851,11 +854,13 @@ class MusicBot(discord.Client):
                 return
             print(f"Exception playing music: {exception!r}")
 
+        loop = getattr(self, "loop", asyncio.get_event_loop())
+
         async with message.channel.typing():
             await message.channel.send("Searching for video...")
             player = await YTDLSource.from_url(
                 url,
-                loop=self.loop,
+                loop=loop,
                 stream=True,
             )
             voice_client.play(player, after=after)
