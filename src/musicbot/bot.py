@@ -15,7 +15,6 @@ __version__ = "1.0.2"
 import asyncio
 import difflib
 import inspect
-import io
 import os
 import sys
 import traceback
@@ -85,24 +84,17 @@ def closest(given: str, options: Iterable[str]) -> str:
 def log_active_exception(extra: str | None = None) -> str:
     """Log active exception."""
     # Get values from exc_info
-    values = sys.exc_info()
+    ex_type, ex_value, _ex_traceback = sys.exc_info()
     # Get error message.
     msg = "#" * 16 + "\n"
     if extra is not None:
         msg += f"{extra}\n"
-    msg += "Exception class:\n" + str(values[0]) + "\n"
-    msg += "Exception text:\n" + str(values[1]) + "\n"
+    msg += "Exception class:\n" + str(ex_type) + "\n"
+    msg += "Exception text:\n" + str(ex_value) + "\n\n"
 
-    with io.StringIO() as yes_totally_a_file:
-        traceback.print_exception(
-            None,
-            value=values[1],
-            tb=values[2],
-            limit=None,
-            file=yes_totally_a_file,
-            chain=True,
-        )
-        msg += "\n" + yes_totally_a_file.getvalue() + "\n" + "#" * 16 + "\n"
+    msg += "".join(traceback.format_exception(ex_value))
+    msg += "\n" + "#" * 16 + "\n"
+
     return msg
 
 
@@ -445,14 +437,9 @@ def slash_handle(
             interaction: discord.Interaction[MusicBot] = args[1]
             try:
                 msg = interaction_to_message(interaction)
-            except Exception:
-                root = os.path.split(os.path.abspath(__file__))[0]
-                logpath = os.path.join(root, "log.txt")
-                log_active_exception(logpath)
-                raise
-            try:
                 await message_command(msg, *args[2:], **kwargs)
             except Exception as exc:
+                print(log_active_exception())
                 await msg.channel.send(
                     f"An error occurred processing the slash command:\n```\n{exc}\n```",
                 )
@@ -972,9 +959,9 @@ class MusicBot(discord.Client):
         annotations = get_type_hints(command_func)
         params = {}
         for name, typeval in annotations.items():
-            if name in {"return"}:
+            if name == "return":
                 continue
-            if typeval in {discord.Message}:
+            if typeval == discord.Message:
                 continue
 
             params[name] = typeval
