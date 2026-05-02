@@ -52,7 +52,7 @@ tools = [
     "mypy>=1.20.0",
     "ruff>=0.15.10",
     "codespell>=2.4.2",
-    "pre-commit>=4.5.1",
+    "pre-commit>=4.6.0",
     "attrs>=26.1.0",
 ]
 
