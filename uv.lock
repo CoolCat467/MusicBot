@@ -1017,14 +1017,14 @@ requires-dist = [
     { name = "discord-py", specifier = "==2.7.1" },
     { name = "dnspython", specifier = "~=2.8.0" },
     { name = "httpx", extras = ["http2"], specifier = "~=0.28.1" },
-    { name = "mypy", marker = "extra == 'tools'", specifier = ">=1.20.0" },
-    { name = "pre-commit", marker = "extra == 'tools'", specifier = ">=4.5.1" },
+    { name = "mypy", marker = "extra == 'tools'", specifier = ">=1.20.2" },
+    { name = "pre-commit", marker = "extra == 'tools'", specifier = ">=4.6.0" },
     { name = "pynacl", specifier = "~=1.6.2" },
     { name = "pytest", marker = "extra == 'tests'", specifier = ">=9.0.3" },
     { name = "pytest-cov", marker = "extra == 'tests'", specifier = ">=7.1.0" },
     { name = "python-dotenv", specifier = "~=1.2.2" },
-    { name = "ruff", marker = "extra == 'tools'", specifier = ">=0.15.10" },
-    { name = "uv", marker = "extra == 'tests'", specifier = ">=0.11.6" },
+    { name = "ruff", marker = "extra == 'tools'", specifier = ">=0.15.12" },
+    { name = "uv", marker = "extra == 'tests'", specifier = ">=0.11.7" },
     { name = "yt-dlp", specifier = ">=2026.3.17" },
 ]
 provides-extras = ["tests", "tools"]
